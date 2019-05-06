@@ -1,49 +1,14 @@
-/*#include "adcdrv.h"
+#include "adcdrv.h"
 #include <xc.h>
-*/
-//#define  SAMP_BUFF_SIZE	 		8		// Size of the input buffer per analog input
-//#define  NUM_CHS2SCAN			4		// Number of channels enabled for channel scan
-
-/*=============================================================================
-ADC INITIALIZATION FOR CHANNEL SCAN
-=============================================================================*/
-/*void initadc1(void)
-{
-
-		AD1CON1bits.FORM   = 3;		// Data Output Format: Signed Fraction (Q15 format)
-		AD1CON1bits.SSRC   = 2;		// Sample Clock Source: GP Timer starts conversion
-		AD1CON1bits.ASAM   = 1;		// ADC Sample Control: Sampling begins immediately after conversion
-		AD1CON1bits.AD12B  = 0;		// 10-bit ADC operation
-
-		AD1CON2bits.CSCNA = 1;		// Scan Input Selections for CH0+ during Sample A bit
-		AD1CON2bits.CHPS  = 0;		// Converts CH0
-
-		AD1CON3bits.ADRC = 0;		// ADC Clock is derived from Systems Clock
-		AD1CON3bits.ADCS = 63;		// ADC Conversion Clock Tad=Tcy*(ADCS+1)= (1/40M)*64 = 1.6us (625Khz)
-									// ADC Conversion Time for 10-bit Tc=12*Tab = 19.2us
-
-		AD1CON2bits.SMPI    = (NUM_CHS2SCAN-1);	// 4 ADC Channel is scanned
-
-}*/
-//------------------------------------------------------------------------------
-// A/D Functions [ADS8344]
-//
-// File Name: 		ADC (ADS8344).c
-// Version:			1.0.0
-// Date:				April 2, 2019
-//	Description:	A/D Functions [ADS8344]
-//
-//------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-                         
-//------------------------------------------------------------------------------
-//	Project Header Files
-//------------------------------------------------------------------------------
-/*#include <p33FJ128MC802.h>                                               // Header file for the PIC33 MCU
-#include "peripherals.h"                                                    // Header file for Peripheral Library Header File
-#include <stdio.h>                                                   // Header file for Standard I/O Header File
-
+#include <p33FJ128MC802.h>
+#include "peripherals.h"
+#include <stdio.h>
+#include <SPI.h>
+#define HIGH 1
+#define LOW 0
+#define  SAMP_BUFF_SIZE	 		8		// Size of the input buffer per analog input
+#define  NUM_CHS2SCAN			4		// Number of channels enabled for channel scan
+ 
 //------------------------------------------------------------------------------
 // Global Variables
 //------------------------------------------------------------------------------
@@ -52,37 +17,20 @@ ADC INITIALIZATION FOR CHANNEL SCAN
 // Routine:		select_adc_ads8344
 //	Inputs:		channel #
 //	Outputs:		none
-//	Purpose:		Selects A/D based upon channel number
+//	Purpose:		Selects A/D (just one option for this so other cases in base code removed)
 //-----------------------------------------------------------------------------
 void select_adc_ads8344 (unsigned char channel_number, short value)
 {
 																						//-----------------------------------------
-                                                                  // Since the A/D reads 8 channels we just need to 
-   channel_number >>= 3;                                          // shift to the right 3 bits to get the bank # of the A/D
+                                                                         // Since the A/D reads 8 channels we just need to 
+         channel_number >>= 3;                                          // shift to the right 3 bits to get the bank # of the A/D
 																						//-----------------------------------------
-
-																						//-----------------------------------------
-   switch (channel_number)                                        // Select the correct A/D based upon the bank #
-   {                                                              //
-      case 0x00:                                                  // Bank #0
-         ADC_CS0 = value;                                         // Set CS to value
-         break;                                                   //
-                                                                  //
-      case 0x01:                                                  // Bank #1
-         ADC_CS1 = value;                                         // Set CS to value
-         break;                                                   //
-                                                                  //
-      case 0x02:                                                  // Bank #2
-         ADC_CS2 = value;                                         // Set CS to value
-         break;                                                   //
-                                                                  //
-      case 0x03:                                                  // Bank #3
-         ADC_CS3 = value;                                         // Set CS to value
-         break;                                                   //
-                                                                  //
-      default:                                                    // do nothing...invalid bank #
-         break;                                                   //
-   }     																			//-----------------------------------------
+         AD1CON3bits.ADCS0 = LOW;   
+      
+        // break;                                                   //change to just set one ADC chanel
+                                                             
+  
+       																			//-----------------------------------------
 
 }
 
@@ -140,7 +88,7 @@ unsigned char get_adc_channel_ads8344(unsigned char channel_number)
 //-----------------------------------------------------------------------------
 void start_read_ads8344 (unsigned char channel_number)
 {
-   unsigned char code;
+   unsigned int code; //changed to int
 
    																						//-----------------------------------------
    channel_number = get_adc_channel_ads8344(channel_number);         // Get A/D Channel
@@ -148,10 +96,17 @@ void start_read_ads8344 (unsigned char channel_number)
    code <<= 4;                                                       //
    code |= 0x86;                                                     //
    code = ~code;                                                     //
-   select_adc_ads8344(channel_number, LOW);                          // Select A/D
-   SpiChnPutC(2, code);                                              // Send Data
-   SpiChnGetC(2);                                                    // Get the received data
-   select_adc_ads8344(channel_number, HIGH);                         // Deselect A/D
+   //RPINR20 is the SPI data input and clock input register for the dspic33
+   //RPINR21 is the SPI slave select input
+   
+   select_adc_ads8344(channel_number, LOW);  //LOW changed to 0          // Select A/D
+  // WriteSPI1(code);    // SpiChnPutC(2, code);                  // Send Data
+   //putsSPI1(2, &code);
+   //getsSPI1(2, &code, 2);
+   WriteSPI1(code);
+   ReadSPI1();
+ //  ReadSPI1(code);                      //SpiChnGetC(2);                        // Get the received data
+  select_adc_ads8344(channel_number, HIGH);                               // Deselect A/D
 																							//-----------------------------------------
 
 }
@@ -164,19 +119,19 @@ void start_read_ads8344 (unsigned char channel_number)
 //-----------------------------------------------------------------------------
 signed long read_channel_ads8344 (unsigned char channel_number)
 {
-	signed long adcData = 0x00000000;
-
-   																						//-----------------------------------------
+	signed long adcData = 0x00000000; //write put 0xFF , read for get 
+    unsigned int code2 = 0xFF;
+                                                                    //-----------------------------------------
    channel_number = get_adc_channel_ads8344(channel_number);         // Get A/D Channel
-   select_adc_ads8344(channel_number, LOW);                          // Select A/D
-   SpiChnPutC(2, 0xFF);                                              // Send Data
-   adcData =SpiChnGetC(2);                                           // Get the received data
+   select_adc_ads8344(channel_number, 0);                          // Select A/D, LOW changed to 0
+   WriteSPI1(code2);                                           // Send Data
+   adcData = ReadSPI1();                                           // Get the received data
    adcData <<= 8;                                                    // Shift by 8 bits
-   SpiChnPutC(2, 0xFF);                                              // Send Data
-   adcData |=SpiChnGetC(2);                                          // Get the received data
+   WriteSPI1(code2);                                              // Send Data
+   adcData |=ReadSPI1();                                          // Get the received data
    adcData <<= 8;                                                    // Shift by 8 bits
-   SpiChnPutC(2, 0xFF);                                              // Send Data
-   adcData |=SpiChnGetC(2);                                          // Get the received data
+   WriteSPI1(code2);                                              // Send Data
+   adcData |=ReadSPI1();                                          // Get the received data
    select_adc_ads8344(channel_number, HIGH);                         // Deselect A/D
 																							//-----------------------------------------
 
@@ -186,4 +141,3 @@ signed long read_channel_ads8344 (unsigned char channel_number)
 
    return adcData;
 }
-*/
